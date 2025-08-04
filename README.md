@@ -1,183 +1,456 @@
-# Anthropic Computer Use Demo
+# Claude Computer Use Agent - Complete System
 
-> [!NOTE]
-> Now featuring support for the new Claude 4 models! The latest Claude 4 Sonnet (claude-sonnet-4-20250514) is now the default model, with Claude 4 Opus (claude-opus-4-20250514) also available. These models bring next-generation capabilities with the updated str_replace_based_edit_tool that replaces the previous str_replace_editor tool. The undo_edit command has been removed in this latest version for a more streamlined experience.
+> A scalable, session-based computer use agent system with real-time desktop control, MySQL persistence, and enhanced frontend with live VNC display.
 
-> [!CAUTION]
-> Computer use is a beta feature. Please be aware that computer use poses unique risks that are distinct from standard API features or chat interfaces. These risks are heightened when using computer use to interact with the internet. To minimize risks, consider taking precautions such as:
->
-> 1. Use a dedicated virtual machine or container with minimal privileges to prevent direct system attacks or accidents.
-> 2. Avoid giving the model access to sensitive data, such as account login information, to prevent information theft.
-> 3. Limit internet access to an allowlist of domains to reduce exposure to malicious content.
-> 4. Ask a human to confirm decisions that may result in meaningful real-world consequences as well as any tasks requiring affirmative consent, such as accepting cookies, executing financial transactions, or agreeing to terms of service.
->
-> In some circumstances, Claude will follow commands found in content even if it conflicts with the user's instructions. For example, instructions on webpages or contained in images may override user instructions or cause Claude to make mistakes. We suggest taking precautions to isolate Claude from sensitive data and actions to avoid risks related to prompt injection.
->
-> Finally, please inform end users of relevant risks and obtain their consent prior to enabling computer use in your own products.
+## 🚀 Overview
 
-This repository helps you get started with computer use on Claude, with reference implementations of:
+This system transforms the original Anthropic Computer Use Demo into a production-ready, scalable architecture with:
 
-- Build files to create a Docker container with all necessary dependencies
-- A computer use agent loop using the Anthropic API, Bedrock, or Vertex to access Claude 3.5 Sonnet, Claude 3.7 Sonnet, Claude 4 Sonnet, and Claude 4 Opus models
-- Anthropic-defined computer use tools
-- A streamlit app for interacting with the agent loop
+- **FastAPI Backend**: Session management and real-time communication
+- **MySQL Database**: Persistent storage for sessions and messages
+- **Enhanced Frontend**: Modern interface with live desktop view
+- **Real-time Desktop Control**: VNC integration for live agent observation
+- **Docker Compose**: Complete containerized deployment
 
-Please use [this form](https://forms.gle/BT1hpBrqDPDUrCqo7) to provide feedback on the quality of the model responses, the API itself, or the quality of the documentation - we cannot wait to hear from you!
+## 📋 Prerequisites
 
-> [!IMPORTANT]
-> The Beta API used in this reference implementation is subject to change. Please refer to the [API release notes](https://docs.anthropic.com/en/release-notes/api) for the most up-to-date information.
+### System Requirements
+- Docker and Docker Compose
+- At least 4GB RAM
+- 10GB free disk space
+- Internet connection for API access
 
-> [!IMPORTANT]
-> The components are weakly separated: the agent loop runs in the container being controlled by Claude, can only be used by one session at a time, and must be restarted or reset between sessions if necessary.
+### API Key Setup
+1. Get your Anthropic API key from [Anthropic Console](https://console.anthropic.com/)
+2. Create the API key file:
+   ```bash
+   mkdir -p ~/.anthropic
+   echo "your-api-key-here" > ~/.anthropic/api_key
+   ```
 
-## Quickstart: running the Docker container
+## 🛠️ Installation & Setup
 
-### Anthropic API
-
-> [!TIP]
-> You can find your API key in the [Anthropic Console](https://console.anthropic.com/).
-
+### 1. Clone the Repository
 ```bash
-export ANTHROPIC_API_KEY=%your_api_key%
-docker run \
-    -e ANTHROPIC_API_KEY=$ANTHROPIC_API_KEY \
-    -v $HOME/.anthropic:/home/computeruse/.anthropic \
-    -p 5900:5900 \
-    -p 8501:8501 \
-    -p 6080:6080 \
-    -p 8080:8080 \
-    -it ghcr.io/anthropics/anthropic-quickstarts:computer-use-demo-latest
+git clone <repository-url>
+cd computer-use-demo
 ```
 
-Once the container is running, see the [Accessing the demo app](#accessing-the-demo-app) section below for instructions on how to connect to the interface.
-
-### Bedrock
-
-> [!TIP]
-> To use the new Claude 3.7 Sonnet on Bedrock, you first need to [request model access](https://docs.aws.amazon.com/bedrock/latest/userguide/model-access-modify.html).
-
-You'll need to pass in AWS credentials with appropriate permissions to use Claude on Bedrock.
-You have a few options for authenticating with Bedrock. See the [boto3 documentation](https://boto3.amazonaws.com/v1/documentation/api/latest/guide/credentials.html#environment-variables) for more details and options.
-
-#### Option 1: (suggested) Use the host's AWS credentials file and AWS profile
-
+### 2. Environment Configuration
+Create a `.env` file in the project root:
 ```bash
-export AWS_PROFILE=<your_aws_profile>
-docker run \
-    -e API_PROVIDER=bedrock \
-    -e AWS_PROFILE=$AWS_PROFILE \
-    -e AWS_REGION=us-west-2 \
-    -v $HOME/.aws:/home/computeruse/.aws \
-    -v $HOME/.anthropic:/home/computeruse/.anthropic \
-    -p 5900:5900 \
-    -p 8501:8501 \
-    -p 6080:6080 \
-    -p 8080:8080 \
-    -it ghcr.io/anthropics/anthropic-quickstarts:computer-use-demo-latest
+cat > .env << EOF
+ANTHROPIC_API_KEY=your-api-key-here
+API_PROVIDER=anthropic
+EOF
 ```
 
-Once the container is running, see the [Accessing the demo app](#accessing-the-demo-app) section below for instructions on how to connect to the interface.
-
-#### Option 2: Use an access key and secret
-
+### 3. Build and Start Services
 ```bash
-export AWS_ACCESS_KEY_ID=%your_aws_access_key%
-export AWS_SECRET_ACCESS_KEY=%your_aws_secret_access_key%
-export AWS_SESSION_TOKEN=%your_aws_session_token%
-docker run \
-    -e API_PROVIDER=bedrock \
-    -e AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID \
-    -e AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY \
-    -e AWS_SESSION_TOKEN=$AWS_SESSION_TOKEN \
-    -e AWS_REGION=us-west-2 \
-    -v $HOME/.anthropic:/home/computeruse/.anthropic \
-    -p 5900:5900 \
-    -p 8501:8501 \
-    -p 6080:6080 \
-    -p 8080:8080 \
-    -it ghcr.io/anthropics/anthropic-quickstarts:computer-use-demo-latest
+# Build all services
+docker-compose build
+
+# Start all services
+docker-compose up -d
+
+# Check service status
+docker-compose ps
 ```
 
-Once the container is running, see the [Accessing the demo app](#accessing-the-demo-app) section below for instructions on how to connect to the interface.
-
-### Vertex
-
-You'll need to pass in Google Cloud credentials with appropriate permissions to use Claude on Vertex.
-
+### 4. Verify Installation
 ```bash
-docker build . -t computer-use-demo
-gcloud auth application-default login
-export VERTEX_REGION=%your_vertex_region%
-export VERTEX_PROJECT_ID=%your_vertex_project_id%
-docker run \
-    -e API_PROVIDER=vertex \
-    -e CLOUD_ML_REGION=$VERTEX_REGION \
-    -e ANTHROPIC_VERTEX_PROJECT_ID=$VERTEX_PROJECT_ID \
-    -v $HOME/.config/gcloud/application_default_credentials.json:/home/computeruse/.config/gcloud/application_default_credentials.json \
-    -p 5900:5900 \
-    -p 8501:8501 \
-    -p 6080:6080 \
-    -p 8080:8080 \
-    -it computer-use-demo
+# Check backend health
+curl http://localhost:8000/health
+
+# Check frontend accessibility
+curl http://localhost:3000
+
+# Check VNC service
+curl http://localhost:6080/vnc.html
 ```
 
-Once the container is running, see the [Accessing the demo app](#accessing-the-demo-app) section below for instructions on how to connect to the interface.
+## 🌐 Access Points
 
-This example shows how to use the Google Cloud Application Default Credentials to authenticate with Vertex.
-You can also set `GOOGLE_APPLICATION_CREDENTIALS` to use an arbitrary credential file, see the [Google Cloud Authentication documentation](https://cloud.google.com/docs/authentication/application-default-credentials#GAC) for more details.
+### Primary Interfaces
+- **Enhanced Frontend**: http://localhost:3000
+  - Modern interface with live desktop view
+  - Real-time chat and agent interaction
+  - Session management and database integration
 
-### Accessing the demo app
+- **Original Streamlit**: http://localhost:8080
+  - Original Anthropic demo interface
+  - Combined desktop view and chat
 
-Once the container is running, open your browser to [http://localhost:8080](http://localhost:8080) to access the combined interface that includes both the agent chat and desktop view.
+### Additional Services
+- **Backend API**: http://localhost:8000
+  - RESTful API for session management
+  - WebSocket endpoints for real-time updates
+  - Health check: http://localhost:8000/health
 
-The container stores settings like the API key and custom system prompt in `~/.anthropic/`. Mount this directory to persist these settings between container runs.
+- **VNC Desktop View**: http://localhost:6080/vnc.html
+  - Direct access to desktop environment
+  - Full VNC client interface
 
-Alternative access points:
+- **Streamlit Interface**: http://localhost:8501
+  - Alternative Streamlit interface
 
-- Streamlit interface only: [http://localhost:8501](http://localhost:8501)
-- Desktop view only: [http://localhost:6080/vnc.html](http://localhost:6080/vnc.html)
-- Direct VNC connection: `vnc://localhost:5900` (for VNC clients)
+- **MySQL Database**: localhost:3307
+  - Database credentials: root/root1234
+  - Database name: computer_use_demo
 
-## Screen size
+## 🏗️ Architecture
 
-Environment variables `WIDTH` and `HEIGHT` can be used to set the screen size. For example:
-
-```bash
-docker run \
-    -e ANTHROPIC_API_KEY=$ANTHROPIC_API_KEY \
-    -v $HOME/.anthropic:/home/computeruse/.anthropic \
-    -p 5900:5900 \
-    -p 8501:8501 \
-    -p 6080:6080 \
-    -p 8080:8080 \
-    -e WIDTH=1920 \
-    -e HEIGHT=1080 \
-    -it ghcr.io/anthropics/anthropic-quickstarts:computer-use-demo-latest
+### Services Overview
+```
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│   Frontend      │    │   Backend       │    │   Computer      │
+│   (Nginx)       │◄──►│   (FastAPI)     │◄──►│   Use Demo      │
+│   Port: 3000    │    │   Port: 8000    │    │   Port: 8080    │
+└─────────────────┘    └─────────────────┘    └─────────────────┘
+                                │
+                                ▼
+                       ┌─────────────────┐
+                       │   MySQL         │
+                       │   Port: 3307    │
+                       └─────────────────┘
 ```
 
-We do not recommend sending screenshots in resolutions above [XGA/WXGA](https://en.wikipedia.org/wiki/Display_resolution_standards#XGA) to avoid issues related to [image resizing](https://docs.anthropic.com/en/docs/build-with-claude/vision#evaluate-image-size).
-Relying on the image resizing behavior in the API will result in lower model accuracy and slower performance than implementing scaling in your tools directly. The `computer` tool implementation in this project demonstrates how to scale both images and coordinates from higher resolutions to the suggested resolutions.
+### Key Components
 
-When implementing computer use yourself, we recommend using XGA resolution (1024x768):
+1. **Frontend Service** (`frontend/`)
+   - Nginx-based static file server
+   - Enhanced HTML/JS interface
+   - Real-time WebSocket communication
+   - Live VNC desktop view integration
 
-- For higher resolutions: Scale the image down to XGA and let the model interact with this scaled version, then map the coordinates back to the original resolution proportionally.
-- For lower resolutions or smaller devices (e.g. mobile devices): Add black padding around the display area until it reaches 1024x768.
+2. **Backend Service** (`backend/`)
+   - FastAPI application
+   - Session management
+   - MySQL database integration
+   - Agent execution coordination
+   - WebSocket real-time updates
 
-## Development
+3. **Computer Use Demo** (`computer_use_demo/`)
+   - Original Anthropic agent
+   - Desktop environment with Xvfb
+   - Screenshot and control tools
+   - Streamlit interface
 
+4. **MySQL Database** (`mysql/`)
+   - Persistent session storage
+   - Message history
+   - Tool results and screenshots
+
+## 🔧 Configuration
+
+### Environment Variables
 ```bash
-./setup.sh  # configure venv, install development dependencies, and install pre-commit hooks
-docker build . -t computer-use-demo:local  # manually build the docker image (optional)
-export ANTHROPIC_API_KEY=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
-docker run \
-    -e ANTHROPIC_API_KEY=$ANTHROPIC_API_KEY \
-    -v $(pwd)/computer_use_demo:/home/computeruse/computer_use_demo/ `# mount local python module for development` \
-    -v $HOME/.anthropic:/home/computeruse/.anthropic \
-    -p 5900:5900 \
-    -p 8501:8501 \
-    -p 6080:6080 \
-    -p 8080:8080 \
-    -it computer-use-demo:local  # can also use ghcr.io/anthropics/anthropic-quickstarts:computer-use-demo-latest
+# Required
+ANTHROPIC_API_KEY=your-api-key-here
+API_PROVIDER=anthropic
+
+# Database (optional - defaults provided)
+MYSQL_HOST=mysql
+MYSQL_PORT=3306
+MYSQL_USER=root
+MYSQL_PASSWORD=root1234
+MYSQL_DATABASE=computer_use_demo
 ```
 
-The docker run command above mounts the repo inside the docker image, such that you can edit files from the host. Streamlit is already configured with auto reloading.
+### Database Schema
+```sql
+-- Sessions table
+CREATE TABLE sessions (
+    id VARCHAR(36) PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    status ENUM('idle', 'running', 'completed', 'error') DEFAULT 'idle',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+-- Messages table
+CREATE TABLE messages (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    session_id VARCHAR(36) NOT NULL,
+    role ENUM('user', 'assistant', 'tool', 'system') NOT NULL,
+    content TEXT NOT NULL,
+    message_type ENUM('text', 'tool_result', 'screenshot', 'error') DEFAULT 'text',
+    tool_name VARCHAR(255),
+    screenshot LONGTEXT,
+    error TEXT,
+    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE
+);
+```
+
+## 🚀 Usage
+
+### Starting the System
+```bash
+# Start all services
+docker-compose up -d
+
+# View logs
+docker-compose logs -f
+
+# Stop all services
+docker-compose down
+```
+
+### Managing Individual Services
+```bash
+# Restart backend
+docker-compose restart backend
+
+# Rebuild frontend
+docker-compose build frontend
+docker-compose up -d frontend
+
+# Check backend logs
+docker-compose logs backend
+
+# Access backend shell
+docker-compose exec backend bash
+```
+
+### Database Operations
+```bash
+# Access MySQL
+docker-compose exec mysql mysql -u root -proot1234
+
+# Backup database
+docker-compose exec mysql mysqldump -u root -proot1234 computer_use_demo > backup.sql
+
+# Restore database
+docker-compose exec -T mysql mysql -u root -proot1234 computer_use_demo < backup.sql
+```
+
+## 📡 API Endpoints
+
+### Session Management
+```bash
+# Create session
+curl -X POST http://localhost:8000/sessions \
+  -H "Content-Type: application/json" \
+  -d '{"name": "My Session", "initial_message": "Hello"}'
+
+# List sessions
+curl http://localhost:8000/sessions
+
+# Get session details
+curl http://localhost:8000/sessions/{session_id}
+
+# Send message
+curl -X POST http://localhost:8000/sessions/{session_id}/messages \
+  -H "Content-Type: application/json" \
+  -d '{"message": "Take a screenshot"}'
+```
+
+### WebSocket Connection
+```javascript
+// Connect to real-time updates
+const ws = new WebSocket(`ws://localhost:8000/sessions/{session_id}/stream`);
+
+ws.onmessage = function(event) {
+    const data = JSON.parse(event.data);
+    console.log('Received:', data);
+};
+```
+
+## 🔍 Troubleshooting
+
+### Common Issues
+
+1. **API Key Authentication Error**
+   ```bash
+   # Verify API key file exists
+   ls -la ~/.anthropic/api_key
+   
+   # Check API key content
+   cat ~/.anthropic/api_key
+   ```
+
+2. **Port Conflicts**
+   ```bash
+   # Check port usage
+   lsof -i :8000
+   lsof -i :3000
+   lsof -i :3307
+   
+   # Stop conflicting services
+   sudo lsof -ti:8000 | xargs kill -9
+   ```
+
+3. **Database Connection Issues**
+   ```bash
+   # Check MySQL container
+   docker-compose logs mysql
+   
+   # Restart MySQL
+   docker-compose restart mysql
+   ```
+
+4. **Agent Execution Problems**
+   ```bash
+   # Check backend logs
+   docker-compose logs backend
+   
+   # Test agent directly
+   docker-compose exec computer-use-demo python test_agent.py
+   ```
+
+### Health Checks
+```bash
+# Backend health
+curl http://localhost:8000/health
+
+# Frontend accessibility
+curl http://localhost:3000
+
+# VNC service
+curl http://localhost:6080/vnc.html
+
+# Database connection
+docker-compose exec backend python backend/test_db.py
+```
+
+## 📊 Monitoring
+
+### Service Status
+```bash
+# View all services
+docker-compose ps
+
+# Check resource usage
+docker stats
+
+# View service logs
+docker-compose logs -f [service_name]
+```
+
+### Database Monitoring
+```bash
+# Connect to MySQL
+docker-compose exec mysql mysql -u root -proot1234 computer_use_demo
+
+# Check table sizes
+SELECT 
+    table_name,
+    ROUND(((data_length + index_length) / 1024 / 1024), 2) AS 'Size (MB)'
+FROM information_schema.tables 
+WHERE table_schema = 'computer_use_demo';
+```
+
+## 🔒 Security Considerations
+
+1. **API Key Protection**
+   - Store API key in `~/.anthropic/api_key`
+   - Never commit API keys to version control
+   - Use environment variables in production
+
+2. **Network Security**
+   - Services are exposed on localhost only
+   - Use reverse proxy for external access
+   - Implement proper authentication for production
+
+3. **Database Security**
+   - Change default MySQL passwords
+   - Restrict database access
+   - Regular backups
+
+## 🚀 Production Deployment
+
+### Environment Setup
+```bash
+# Production environment variables
+export ANTHROPIC_API_KEY="your-production-api-key"
+export MYSQL_PASSWORD="strong-production-password"
+export NODE_ENV=production
+```
+
+### Reverse Proxy (Nginx)
+```nginx
+server {
+    listen 80;
+    server_name your-domain.com;
+    
+    location / {
+        proxy_pass http://localhost:3000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
+    
+    location /api {
+        proxy_pass http://localhost:8000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
+}
+```
+
+### SSL Certificate
+```bash
+# Install Certbot
+sudo apt install certbot python3-certbot-nginx
+
+# Obtain SSL certificate
+sudo certbot --nginx -d your-domain.com
+```
+
+## 📝 Development
+
+### Local Development
+```bash
+# Mount source code for development
+docker-compose -f docker-compose.dev.yml up -d
+
+# Run tests
+docker-compose exec backend python -m pytest
+
+# Code formatting
+docker-compose exec backend black backend/
+```
+
+### Adding New Features
+1. Modify backend code in `backend/`
+2. Update frontend in `frontend/`
+3. Rebuild affected services
+4. Test thoroughly
+
+## 📚 Additional Resources
+
+- [Anthropic API Documentation](https://docs.anthropic.com/)
+- [FastAPI Documentation](https://fastapi.tiangolo.com/)
+- [Docker Compose Documentation](https://docs.docker.com/compose/)
+- [MySQL Documentation](https://dev.mysql.com/doc/)
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Test thoroughly
+5. Submit a pull request
+
+## 📄 License
+
+This project is licensed under the MIT License - see the LICENSE file for details.
+
+---
+
+## 🎯 Quick Start Summary
+
+1. **Setup**: `git clone && cd computer-use-demo`
+2. **Configure**: Create `~/.anthropic/api_key` with your API key
+3. **Start**: `docker-compose up -d`
+4. **Access**: Open http://localhost:3000
+5. **Test**: Send a message like "Take a screenshot"
+
+**All services will be available at:**
+- Enhanced Frontend: http://localhost:3000
+- Original Streamlit: http://localhost:8080
+- Backend API: http://localhost:8000
+- VNC Desktop: http://localhost:6080/vnc.html
+- MySQL Database: localhost:3307
+
+The system is now ready for production use with full computer control capabilities! 🚀 
