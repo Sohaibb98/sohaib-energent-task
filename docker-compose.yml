@@ -1,0 +1,85 @@
+version: '3.8'
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: computer-use-mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: root1234
+      MYSQL_DATABASE: computer_use_demo
+      MYSQL_USER: root
+      MYSQL_PASSWORD: root1234
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./mysql/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - computer-use-network
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    container_name: computer-use-backend
+    restart: always
+    ports:
+      - "8000:8000"
+    environment:
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - API_PROVIDER=${API_PROVIDER}
+      - MYSQL_HOST=mysql
+      - MYSQL_PORT=3306
+      - MYSQL_USER=root
+      - MYSQL_PASSWORD=root1234
+      - MYSQL_DATABASE=computer_use_demo
+    volumes:
+      - ~/.anthropic:/home/computeruse/.anthropic
+      - /var/run/docker.sock:/var/run/docker.sock
+    depends_on:
+      - computer-use-demo
+      - mysql
+    networks:
+      - computer-use-network
+
+  computer-use-demo:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: computer-use-demo
+    restart: always
+    ports:
+      - "5900:5900"
+      - "6080:6080"
+      - "8080:8080"
+      - "8501:8501"
+    environment:
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - API_PROVIDER=${API_PROVIDER}
+      - WIDTH=1024
+      - HEIGHT=768
+    volumes:
+      - ~/.anthropic:/home/computeruse/.anthropic
+    networks:
+      - computer-use-network
+
+  frontend:
+    image: nginx:alpine
+    container_name: computer-use-frontend
+    restart: always
+    ports:
+      - "3000:80"
+    volumes:
+      - ./frontend:/usr/share/nginx/html
+    depends_on:
+      - backend
+    networks:
+      - computer-use-network
+
+volumes:
+  mysql_data:
+
+networks:
+  computer-use-network:
+    driver: bridge 
