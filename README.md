@@ -12,7 +12,7 @@ This system transforms the original Anthropic Computer Use Demo into a productio
 - **Real-time Desktop Control**: VNC integration for live agent observation
 - **Docker Compose**: Complete containerized deployment
 
-**Demo Video:** [Watch the system in action](https://drive.google.com/file/d/1s8ELApa1pbOhA84i9xV5CR0as5oq5U0a/view?usp=sharing)
+**Demo Video:** [Watch the system in action](https://drive.google.com/file/d/1kPIspffhSkKegO_JCKJ_FjYKmnmWBfTG/view?usp=sharing)
 
 ## 📋 Prerequisites
 
